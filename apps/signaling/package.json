@@ -1,0 +1,16 @@
+{
+  "name": "@droplink/signaling",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.17" },
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "start": "node dist/cli.js",
+    "demo": "npm run build && node scripts/demo.mjs",
+    "demo:webrtc": "npm run build && node scripts/webrtc-demo.mjs"
+  },
+  "dependencies": { "ws": "^8.18.3" },
+  "devDependencies": { "typescript": "^5.9.3", "@types/node": "^22.19.0", "@types/ws": "^8.18.1" }
+}

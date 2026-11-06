@@ -1,0 +1,29 @@
+{
+  "testOnly": true,
+  "seed": "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+  "a": {
+    "version": 1,
+    "deviceId": "06e3fd8fda29bb60ab59557de61edb0aecdb231134be30e75b455f8e1b792fa9",
+    "publicKey": "MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo="
+  },
+  "b": {
+    "version": 1,
+    "deviceId": "47dea58ea00fae9417ee19d76755bfef690899021132effb04fe1f9e4f0c8059",
+    "publicKey": "MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q="
+  },
+  "nonce": "1111111111111111111111111111111111111111111111111111111111111111",
+  "lan": "cccccccccccccccccccccccccccccccc",
+  "auth": "r9zqRhQEzO3nFrgCgCWuoThH1c3E7rE4il51Ep7kZhTDzO+C1Ovv6w7PKTq9BiHV/0jYTLk/SLqLhlCHIfvcAQ==",
+  "binding": "AAyd/BIjkIEfd1V5mWBHhfr5Usr0w2bCLWEGB/9gk6+JEnUKKulySKHpSaUL6OaXBksQhKuJyuBZ0JC0KZgRAw==",
+  "signal": {
+    "type": "signal",
+    "from": "06e3fd8fda29bb60ab59557de61edb0aecdb231134be30e75b455f8e1b792fa9",
+    "to": "47dea58ea00fae9417ee19d76755bfef690899021132effb04fe1f9e4f0c8059",
+    "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "messageId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "expiresAt": 2000000030000,
+    "kind": "offer",
+    "body": "{\"sdp\":\"v=0\\r\\n\",\"note\":\"</script> / नमस्ते 🚀 \\u0001\"}",
+    "signature": "9mde+qUpKSOeJHukXQBwbKLqCMiwG8ttpERoFRLsOTXJsor9gQWLNLNSfQmF8ALp/yw1Z74qVwpEacNB48DGCw=="
+  }
+}

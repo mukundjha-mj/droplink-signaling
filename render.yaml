@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: droplink-signaling
+    runtime: node
+    plan: free
+    rootDir: apps/signaling
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.3
+      - key: DROPLINK_REGISTRY_JSON
+        sync: false
+      - key: DROPLINK_STUN_URLS
+        value: stun:stun.cloudflare.com:3478
