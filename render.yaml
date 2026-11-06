@@ -14,3 +14,7 @@ services:
         sync: false
       - key: DROPLINK_STUN_URLS
         value: stun:stun.cloudflare.com:3478
+      - key: DROPLINK_WEB_RELAY
+        value: "1"
+      - key: DROPLINK_RELAY_DAILY_BYTES
+        value: "67108864"

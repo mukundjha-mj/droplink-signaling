@@ -2,7 +2,7 @@
 
 Render deployment is supported by the repository's `render.yaml`; see [deployment setup](../../docs/RENDER-DEPLOYMENT.md). `RENDER=true` selects `0.0.0.0:$PORT` behind Render's TLS edge. Supply `DROPLINK_REGISTRY_JSON` for persisted environment-based public-key policy. External TURN remains a separate service.
 
-Remote-connectivity foundation using Node 22 + TypeScript + ws. The service routes connection metadata; the native development harness below negotiates real loopback WebRTC and transfers generated test files directly between peers. Android and Internet delivery remain pending.
+Remote connectivity using Node 22 + TypeScript + ws. Native Android and Windows clients verify signed negotiation independently and connect the persistent queue through direct WebRTC, TURN, or an optional opaque web relay.
 
 ```powershell
 cd apps/signaling
@@ -15,7 +15,7 @@ The demo starts a loopback service, creates two ephemeral simulated-device ident
 
 ## Trust and wire contract
 
-This prototype takes a trusted registry of public identities and reciprocal permitted peers. It has no unauthenticated device-registration endpoint. Existing LAN capability tokens are never reused as cloud credentials. Native key creation, protected storage, QR/TLS enrollment and public registry export now exist; see [secure pairing](../../docs/SECURE-REMOTE-PAIRING.md). Native WebSocket clients, queue integration and provisioning into the deployed service remain pending.
+The service takes a trusted registry of public identities and reciprocal permitted peers. It has no unauthenticated device-registration endpoint. Existing LAN capability tokens are never reused as cloud credentials. Native key creation, protected storage, QR/TLS enrollment, public registry export, WebSocket clients and queue integration exist; see [secure pairing](../../docs/SECURE-REMOTE-PAIRING.md). Real-device cloud policy must be provisioned explicitly.
 
 Identity: Ed25519 public key encoded as base64 DER SPKI. Device ID: lowercase SHA-256 hex of DER SPKI. Registry: `{ "DEVICE_ID": { "publicKey": "BASE64_SPKI", "peers": ["OTHER_DEVICE_ID"] } }`. Both sides must permit each other. Only public metadata belongs in this file.
 
@@ -29,7 +29,7 @@ Signals contain exactly `type`, `from`, `to`, `sessionId`, `messageId`, `expires
 ["droplink.signaling.signal.v1",from,to,sessionId,messageId,expiresAt,kind,body]
 ```
 
-The destination must independently verify using its pinned peer public key, validate expiry/session state and maintain its own replay cache. Server verification alone is insufficient against a compromised signaling server. `validateSignal` verifies the envelope/signature; the native client's accepted-session state machine and destination replay handling are future integration work.
+The destination independently verifies using its pinned peer public key, validates expiry/session state and maintains a persistent replay ledger. Server verification alone is insufficient against a compromised signaling server. Native senders use 30-second expiry to leave clock-skew headroom under the strict 60-second validation bound.
 
 The server forwards the original signed signal only between reciprocal peers. Delivery status says forwarded or offline. Forwarded means handed to the target WebSocket, not accepted by the target and never file delivery. No file-upload/download endpoint or offline message/file storage is implemented. Filenames, source URIs and file bytes do not belong in signaling payloads.
 
@@ -44,7 +44,15 @@ npm start
 
 Default endpoint is `ws://127.0.0.1:8787/v1/signaling`. CLI intentionally binds only loopback and prints no credentials or messages. Health endpoint: `GET /health`.
 
-Public deployment remains a separate gate: HTTPS/WSS termination, trusted proxy/IP rate handling, controlled identity enrollment, durable metadata, monitoring, TURN credentials and capacity, security review and real network tests. Plain WS is only for local development. No infrastructure has been provisioned.
+The free Render WSS deployment is live; see the deployment guide for its verified scope and remaining hardware checks. Plain WS is allowed only for debug loopback development. Cloudflare TURN remains optional and unconfigured: the user declined billing activation.
+
+## Optional encrypted web relay
+
+`DROPLINK_WEB_RELAY=1` enables `/v1/relay`. Authenticated signaling advertises `webRelay: true`. A signed offer/answer chooses `transport: web-relay`; endpoints still validate the pinned peer key and persistent session state. Each relay socket receives a fresh nonce and joins using an Ed25519 signature over UTF-8 JSON `["droplink.webrelay.join.v1",nonce,deviceId,peerId,sessionId,role]`. Roles are `send` and `receive`; both peers must be reciprocally permitted and join the same session with opposite roles.
+
+The broker forwards opaque binary records only after both joins. Native endpoints establish a second TLS session through that pipe using the paired PC certificate pin, then authenticate the LAN capability inside TLS. The broker sees addresses, identities, timing and byte counts, but no file plaintext or LAN credential. It stores no files.
+
+Relay limits: 8 KiB frames, 16 pairs/32 clients, 256 KiB socket buffer threshold, 25-second waiting-peer deadline, heartbeat, and live policy checks on every forwarded frame. `DROPLINK_RELAY_DAILY_BYTES` defaults to 67,108,864 total forwarded bytes per UTC day per process (both directions including TLS overhead); setting 0 disables forwarding. This in-memory allowance resets on a process restart. It is a demo traffic guard, not an account-level spending limit. Render outbound bandwidth/build quotas still apply; no new paid service or Cloudflare subscription is selected.
 
 Documentation used through Context7: https://github.com/websockets/ws and Node 22 crypto documentation at https://nodejs.org/docs/latest-v22.x/api/crypto.html.
 ## Native transfer demonstration

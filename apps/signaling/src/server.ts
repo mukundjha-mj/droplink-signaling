@@ -3,8 +3,9 @@ import type { AddressInfo } from 'node:net';
 import { WebSocket, WebSocketServer } from 'ws';
 import { authBytes, nonce, validateRegistry, validateSignal, validSignature, type Registry } from './identity.js';
 import type {IceServer} from './turn.js';
+import {createWebRelay} from './web-relay.js';
 
-export function createSignaling(registrations: unknown, options: { heartbeatMs?: number; authTimeoutMs?: number; iceServers?:(id:string)=>IceServer[] }={}) {
+export function createSignaling(registrations: unknown, options: { heartbeatMs?: number; authTimeoutMs?: number; iceServers?:(id:string)=>IceServer[]|Promise<IceServer[]>; webRelay?:boolean; relayDailyBytes?:number }={}) {
   let registry=validateRegistry(registrations);
   const online=new Map<string,WebSocket>();
   const replay=new Map<string,number>();
@@ -17,6 +18,7 @@ export function createSignaling(registrations: unknown, options: { heartbeatMs?:
   });
   http.requestTimeout=5000; http.headersTimeout=5000;
   const wss=new WebSocketServer({noServer:true,maxPayload:16384,perMessageDeflate:false});
+  const relay=options.webRelay?createWebRelay(()=>registry,options.relayDailyBytes):undefined;
   const send=(socket:WebSocket,data:unknown)=> {
     if(socket.readyState!==WebSocket.OPEN) return;
     if(socket.bufferedAmount>262144) { socket.terminate(); return; }
@@ -33,13 +35,14 @@ export function createSignaling(registrations: unknown, options: { heartbeatMs?:
     if(!upgrades.has(ip) && upgrades.size>=4096) {socket.destroy();return;}
     const bucket=upgrades.get(ip) ?? {count:0,until:now+60000}; bucket.count++; upgrades.set(ip,bucket);
     // Native clients only. No credentials in URL, query string or browser origin.
-    if(request.url!=='/v1/signaling' || request.headers.origin || bucket.count>20 || wss.clients.size>=256 || upgrades.size>4096) {
+    if((request.url!=='/v1/signaling' && !(relay && request.url==='/v1/relay')) || request.headers.origin || bucket.count>20 || wss.clients.size>=256 || (relay?.wss.clients.size??0)>=32 || upgrades.size>4096) {
       socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); return;
     }
-    wss.handleUpgrade(request,socket,head,ws=>wss.emit('connection',ws));
+    const target=request.url==='/v1/relay'?relay!.wss:wss;
+    target.handleUpgrade(request,socket,head,ws=>target.emit('connection',ws));
   });
   wss.on('connection',socket=> {
-    let identity:string|undefined, alive=true, count=0, window=Date.now();
+    let identity:string|undefined, authenticating=false, alive=true, count=0, window=Date.now();
     const challenge=nonce();
     const timeout=setTimeout(()=>socket.terminate(),options.authTimeoutMs ?? 5000);
     send(socket,{type:'challenge',protocolVersion:1,nonce:challenge});
@@ -49,17 +52,23 @@ export function createSignaling(registrations: unknown, options: { heartbeatMs?:
     },options.heartbeatMs ?? 30000);
     socket.on('pong',()=>{alive=true;});
     socket.on('error',()=>{});
-    socket.on('message',(data,binary)=> {
+    socket.on('message',async(data,binary)=> {
       try {
         if(Date.now()-window>=60000) {window=Date.now();count=0;}
         if(++count>120 || binary) throw new Error('invalid_or_rate_limited');
         const message=JSON.parse(data.toString());
         if(!identity) {
+          if(authenticating)throw new Error('authentication_in_progress');
           const record=registry[message.deviceId];
           if(message.type!=='authenticate' || typeof message.deviceId!=='string' || !record || !validSignature(record.publicKey,authBytes(challenge),message.signature)) throw new Error('unauthorized');
           if(online.has(message.deviceId)) throw new Error('device_already_connected');
+          authenticating=true;
+          const iceServers=await options.iceServers?.(message.deviceId)??[];
+          if(socket.readyState!==WebSocket.OPEN)return;
+          // Recheck policy and duplicate login after the asynchronous provider lookup.
+          if(!registry[message.deviceId]||registry[message.deviceId]!.publicKey!==record.publicKey||online.has(message.deviceId))throw new Error('unauthorized');
           identity=message.deviceId; online.set(identity!,socket); clearTimeout(timeout);
-          send(socket,{type:'authenticated',deviceId:identity,iceServers:options.iceServers?.(identity!)??[]});
+          send(socket,{type:'authenticated',deviceId:identity,iceServers,webRelay:Boolean(relay)});
           for(const peer of record.peers) if(allowed(identity!,peer)) send(socket,{type:'presence',deviceId:peer,online:online.has(peer)});
           presence(identity!,true); return;
         }
@@ -83,6 +92,7 @@ export function createSignaling(registrations: unknown, options: { heartbeatMs?:
     });
   });
   return {
+    isOnline(id:string) { return online.has(id); },
     async listen(port=0,host='127.0.0.1') {
       await new Promise<void>((resolve,reject)=>{http.once('error',reject);http.listen(port,host,()=>{http.removeListener('error',reject);resolve();});});
       return http.address() as AddressInfo;
@@ -92,6 +102,7 @@ export function createSignaling(registrations: unknown, options: { heartbeatMs?:
       for(const [id,socket] of online) if(!next[id] || next[id]!.publicKey!==old[id]?.publicKey) socket.terminate();
     },
     async close() {
+      await relay?.close();
       for(const socket of wss.clients) socket.terminate();
       await new Promise<void>(resolve=>wss.close(()=>resolve()));
       await new Promise<void>(resolve=>http.close(()=>resolve()));

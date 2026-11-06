@@ -1,12 +1,18 @@
 # Render signaling deployment
 
-Render hosts the HTTPS/WSS signaling process. File bytes continue over peer-to-peer WebRTC or an external TURN relay; Render's HTTP web service is not the TURN server.
+Live deployment: [HTTPS health](https://droplink-signaling-62ww.onrender.com/health), WSS endpoint `wss://droplink-signaling-62ww.onrender.com/v1/signaling`. Service ID: `srv-dbn1gj8n74is73dgil6g`, free plan, Singapore region. Source: [isolated signaling repository](https://github.com/mukundjha-mj/droplink-signaling), made public with the user's explicit approval. Automatic deployment is disabled; updates are deployed deliberately after checks.
+
+Verified: successful HTTPS health response, authorized WSS authentication/routing, recipient-side signature/session verification and rejection of an incorrect identity signature. Temporary cloud test identities were removed and the deny-all empty registry redeployed successfully. Real paired-device policy still needs provisioning; this does not establish end-to-end mobile-data delivery or external TURN support.
+
+Render hosts HTTPS/WSS signaling and can forward opaque inner-TLS records through the optional `/v1/relay` fallback. It cannot host a standard public UDP TURN listener on this HTTP service. Direct WebRTC remains preferred; external TURN is optional. The user declined Cloudflare billing, so no Cloudflare TURN subscription or issuer key was created.
 
 The repository-root `render.yaml` defines a free Node web service with `apps/signaling` as root, `npm ci --include=dev && npm run build`, `npm start`, and `/health`. Render provides `PORT` and TLS termination. The CLI accepts Render's public bind only when running in that environment; local development remains loopback-only unless an operator explicitly configures a TLS proxy.
 
 Required environment: `DROPLINK_REGISTRY_JSON` is a JSON object of trusted Ed25519 public keys and reciprocal permitted peers, exported by `droplink-agent remote-registry STATE_DIRECTORY`. An empty `{}` deploys fail-closed with no enrolled clients. The Render deployment API key is an operator credential and must never be added to this app's environment or source.
 
-`DROPLINK_STUN_URLS=stun:stun.cloudflare.com:3478` enables public-address discovery. Optional external coturn REST credentials use `DROPLINK_TURN_URLS` (comma-separated TURN URLs) and `DROPLINK_TURN_SECRET` (at least 32 bytes, set as a protected Render environment value). The server issues authenticated devices expiring, device-scoped credentials, never the shared issuer secret. Without TURN, restrictive networks can still prevent direct transfer.
+`DROPLINK_STUN_URLS=stun:stun.cloudflare.com:3478` enables public-address discovery. Optional external coturn REST credentials use `DROPLINK_TURN_URLS` (comma-separated TURN URLs) and `DROPLINK_TURN_SECRET` (at least 32 bytes, set as a protected Render environment value). The server issues authenticated devices expiring, device-scoped credentials, never the shared issuer secret. If direct/TURN fails, `DROPLINK_WEB_RELAY=1` enables the authenticated web relay. The endpoints establish pinned TLS inside WSS, keeping file contents and LAN credentials private from the broker.
+
+`DROPLINK_RELAY_DAILY_BYTES=67108864` permits 64 MiB of forwarded TLS traffic per UTC day per process, including both directions. The allowance is held in memory and resets on process restart; it cannot guarantee a provider billing cap. Render bandwidth/build quotas and existing account billing policy still apply. This is a small demo allowance, not unlimited free file sharing. No paid instance or Cloudflare billing activation is required by this fallback.
 
 After successful deployment:
 
