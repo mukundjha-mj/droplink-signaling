@@ -2,7 +2,7 @@
 
 Live deployment: [HTTPS health](https://droplink-signaling-62ww.onrender.com/health), WSS endpoint `wss://droplink-signaling-62ww.onrender.com/v1/signaling`. Service ID: `srv-dbn1gj8n74is73dgil6g`, free plan, Singapore region. Source: [isolated signaling repository](https://github.com/mukundjha-mj/droplink-signaling), made public with the user's explicit approval. Automatic deployment is disabled; updates are deployed deliberately after checks.
 
-Verified: successful HTTPS health response, authorized WSS authentication/routing, recipient-side signature/session verification and rejection of an incorrect identity signature. Temporary cloud test identities were removed and the deny-all empty registry redeployed successfully. Real paired-device policy still needs provisioning; this does not establish end-to-end mobile-data delivery or external TURN support.
+Verified: HTTPS health, authorized WSS routing, recipient-side signature/session verification and incorrect-signature rejection. Temporary cloud test identities were removed. The existing phone and PC's two public keys are provisioned in the live registry. An actual 8,388,731-byte cellular-phone → Render web relay → home-PC transfer passed pinned TLS, native completion and independent SHA-256, with one exact output. See [test evidence](REMOTE-QUEUE-TEST-2026-11-07.md). This proves the explicitly selected web relay; direct/TURN stabilization and broader background/large-file gates remain open.
 
 Render hosts HTTPS/WSS signaling and can forward opaque inner-TLS records through the optional `/v1/relay` fallback. It cannot host a standard public UDP TURN listener on this HTTP service. Direct WebRTC remains preferred; external TURN is optional. The user declined Cloudflare billing, so no Cloudflare TURN subscription or issuer key was created.
 
@@ -20,7 +20,7 @@ After successful deployment:
 2. Set the PC's `remote-config.json` to `{"signalingUrl":"wss://SERVICE.onrender.com/v1/signaling"}`.
 3. Enroll phone identities through the pinned LAN pairing channel and export the public registry.
 4. Update Render's `DROPLINK_REGISTRY_JSON` with that registry, redeploy, and let clients reconnect.
-5. Verify signed routing, then queue-driven file transfer, durable resume and final SHA-256. Add/test external TURN before claiming restrictive-network support.
+5. Verify signed routing and final SHA-256 through the selected transport. Test default-route fallback, durable resume, background delivery and target network restrictions before release.
 
 Run one signaling instance: presence/routing live in that process; horizontal scaling needs shared routing. Native persistent replay gates remain the final replay boundary across service restarts. Registry environment values survive redeployment; uploaded/local runtime files do not. Render free instances can sleep after idle periods and take about a minute to wake, so clients must retry. An always-on paid plan is a separate choice, not selected automatically.
 

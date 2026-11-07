@@ -33,7 +33,7 @@ The destination independently verifies using its pinned peer public key, validat
 
 The server forwards the original signed signal only between reciprocal peers. Delivery status says forwarded or offline. Forwarded means handed to the target WebSocket, not accepted by the target and never file delivery. No file-upload/download endpoint or offline message/file storage is implemented. Filenames, source URIs and file bytes do not belong in signaling payloads.
 
-Limits: 16 KiB frames, 120 messages/minute/socket, 20 upgrades/minute/IP, 256 simultaneous clients, bounded replay/IP maps, 256 KiB outbound buffer threshold. Binary frames are rejected. Changing policy through `replaceRegistry` takes effect on subsequent signals; removing a device disconnects it. CLI registry changes require restarting the process. Session/presence/replay state is ephemeral, so endpoints must enforce their own replay/session protection across a server restart.
+Signaling limits: 16 KiB frames, 120 messages/minute/socket, 20 upgrades/minute/IP, 256 simultaneous clients, bounded replay/IP maps, 256 KiB outbound buffer threshold. Binary signaling frames are rejected. Changed policy applies on subsequent signals; removing a device disconnects it. CLI registry files refresh every two seconds; environment-based policy changes require redeployment. Session/presence/replay state is ephemeral, so native endpoints enforce persistent replay/session protection across restarts.
 
 ## Manual local service
 
@@ -57,5 +57,5 @@ Relay limits: 8 KiB frames, 16 pairs/32 clients, 256 KiB socket buffer threshold
 Documentation used through Context7: https://github.com/websockets/ws and Node 22 crypto documentation at https://nodejs.org/docs/latest-v22.x/api/crypto.html.
 ## Native transfer demonstration
 
-After building the Rust `droplink-remote-probe` from the repository root, run `npm.cmd run demo:webrtc` here. It routes real SDP through signed signaling and carries a generated file over native loopback WebRTC, then checks interruption/resume, SHA-256 and duplicate receipt handling. The harness uses ephemeral simulated identities; Android, public WSS and TURN remain pending. Full evidence and commands: [native transport test](../../docs/WEBRTC-TEST-2026-11-06.md).
+After building Rust `droplink-remote-probe`, run `npm.cmd run demo:webrtc` here for the simulated-peer native harness. It routes signed SDP and checks loopback transfer/resume, SHA-256 and duplicate receipts. Separate native Android queue and physical cellular web-relay evidence, including open acceptance gates, is recorded in [current test results](../../docs/REMOTE-QUEUE-TEST-2026-11-07.md).
 
